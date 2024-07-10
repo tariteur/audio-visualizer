@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sélection de périphérique de sortie</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .link-div {
+            display: block;
+            width: 110px;
+            padding: 10px;
+            margin: 10px;
+            background-color: lightblue;
+            text-align: center;
+            text-decoration: none;
+            color: black;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <a href="./visualizer" class="link-div">Visualizer</a>
+    <a href="./visualizer_2" class="link-div">Visualizer 2</a>
+
+    <div class="container mt-5">
+        <h1>Sélection de périphérique de sortie</h1>
+        <div class="form-group">
+            <label for="outputDeviceSelect">Sélectionnez un périphérique :</label>
+            <select class="form-control" id="outputDeviceSelect" onchange="selectOutputDevice()">
+                <!-- Options seront ajoutées dynamiquement -->
+            </select>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- Votre propre script JavaScript -->
+    <script>
+        let socket;
+
+        // Fonction pour charger les périphériques de sortie via WebSocket
+        async function loadOutputDevices() {
+            socket = new WebSocket('ws://localhost:8080');
+
+            socket.onopen = function() {
+                console.log('WebSocket connection established');
+            };
+
+            socket.onmessage = function(event) {
+                const message = JSON.parse(event.data);
+                if (message.type === 'deviceList') {
+                    const devices = message.data;
+                    const select = document.getElementById('outputDeviceSelect');
+                    select.innerHTML = '';
+                    devices.forEach(device => {
+                        const option = document.createElement('option');
+                        option.value = device;
+                        option.textContent = device;
+                        select.appendChild(option);
+                    });
+                }
+            };
+            socket.onerror = function(error) {
+                console.error('WebSocket error: ', error);
+            };
+
+            socket.onclose = function() {
+                console.log('WebSocket connection closed');
+            };
+        }
+
+        // Fonction pour sélectionner un périphérique de sortie via WebSocket
+        async function selectOutputDevice() {
+            const select = document.getElementById('outputDeviceSelect');
+            const deviceName = select.value;
+            SendToServer('selectDevice', { name: deviceName });
+        }
+
+        async function SendToServer(type, data) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                try {
+                    const message = {
+                        type: type,
+                        data: data
+                    };
+                    const jsonMessage = JSON.stringify(message);
+                    socket.send(jsonMessage);
+                    console.log(`Message sent to server with type '${type}':`, data);
+                } catch (error) {
+                    console.error('Error sending message to server:', error);
+                }
+            } else {
+                console.error('WebSocket is not connected');
+            }
+        }
+
+        // Au chargement de la page, charger les périphériques disponibles
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOutputDevices();
+        });
+    </script>
+</body>
+</html>
